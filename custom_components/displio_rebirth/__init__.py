@@ -21,6 +21,7 @@ from .const import (
     DEFAULT_PORT,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
+    ORIENTATION_MAP,
     SERVICE_BEEP,
     SERVICE_DISPLAY_GRID,
     SERVICE_DISPLAY_IMAGE,
@@ -120,7 +121,7 @@ def _resolve_orientation(requested: str, coord: DisplioCoordinator) -> str:
     if requested != "auto":
         return requested
     orient_code = (coord.data or {}).get("orientation")
-    return "portrait" if orient_code in (0, 1) else "landscape"
+    return ORIENTATION_MAP.get(orient_code, "landscape_right")
 
 
 def _register_services(hass: HomeAssistant) -> None:
@@ -132,23 +133,36 @@ def _register_services(hass: HomeAssistant) -> None:
         coords = _resolve_coordinators(hass, call.data.get("device_id"))
         for coord in coords:
             orient = _resolve_orientation(call.data["orientation"], coord)
+            params = {
+                "title": call.data["title"],
+                "body": call.data["body"],
+                "footer": call.data["footer"],
+                "invert": call.data["invert"],
+                "icon": call.data["icon"],
+                "subtitle": call.data["subtitle"],
+                "layout": call.data["layout"],
+                "details": call.data.get("details"),
+            }
             fb = await hass.async_add_executor_job(
-                lambda o=orient: render_text_card(
-                    call.data["title"],
-                    call.data["body"],
-                    call.data["footer"],
-                    call.data["invert"],
-                    icon=call.data["icon"],
-                    subtitle=call.data["subtitle"],
-                    layout=call.data["layout"],
+                lambda o=orient, p=params: render_text_card(
+                    p["title"],
+                    p["body"],
+                    p["footer"],
+                    p["invert"],
+                    icon=p["icon"],
+                    subtitle=p["subtitle"],
+                    layout=p["layout"],
                     orientation=o,
-                    details=call.data.get("details"),
+                    details=p["details"],
                 )
             )
             try:
                 await coord.client.post_display(fb, full_refresh=call.data["full_refresh"])
                 if call.data["beep"]:
                     await coord.client.post_beep()
+                coord.last_auto_card = (
+                    ("text", params) if call.data["orientation"] == "auto" else None
+                )
             except DisplioError as err:
                 raise HomeAssistantError(str(err)) from err
 
@@ -165,6 +179,11 @@ def _register_services(hass: HomeAssistant) -> None:
                 await coord.client.post_display(fb, full_refresh=call.data["full_refresh"])
                 if call.data["beep"]:
                     await coord.client.post_beep()
+                coord.last_auto_card = (
+                    ("grid", {"tiles": call.data["tiles"]})
+                    if call.data["orientation"] == "auto"
+                    else None
+                )
             except DisplioError as err:
                 raise HomeAssistantError(str(err)) from err
 
@@ -200,6 +219,7 @@ def _register_services(hass: HomeAssistant) -> None:
         for coord in coords:
             try:
                 await coord.client.post_display(fb, full_refresh=call.data["full_refresh"])
+                coord.last_auto_card = None
             except DisplioError as err:
                 raise HomeAssistantError(str(err)) from err
 

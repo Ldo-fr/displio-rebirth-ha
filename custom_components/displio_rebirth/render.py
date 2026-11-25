@@ -81,10 +81,19 @@ def _fit_font(
     return _load_font(min_size, bold=bold)
 
 
-def _finalize_canvas(img: Image.Image, portrait: bool) -> bytes:
-    """Rotate portrait 176x264 canvas to physical 264x176 and export EPD bytes."""
-    if portrait:
+def _is_portrait(orientation: str) -> bool:
+    """Return True if the orientation string represents a portrait layout."""
+    return orientation in ("portrait", "portrait_up", "portrait_down")
+
+
+def _finalize_canvas(img: Image.Image, orientation: str) -> bytes:
+    """Rotate logical canvas to physical 264x176 and export EPD bytes."""
+    if orientation in ("portrait", "portrait_up"):
         img = img.transpose(Image.Transpose.ROTATE_90)
+    elif orientation == "portrait_down":
+        img = img.transpose(Image.Transpose.ROTATE_270)
+    elif orientation == "landscape_left":
+        img = img.transpose(Image.Transpose.ROTATE_180)
     return image_to_epd_bytes(img, dither=False, invert=False)
 
 
@@ -133,9 +142,10 @@ def _render_split_card(
     icon: str,
     details: list[dict[str, Any] | str] | None,
     invert: bool,
-    portrait: bool,
+    orientation: str,
 ) -> bytes:
     """Render the iconic Displio split card (dark hero panel + light info panel)."""
+    portrait = _is_portrait(orientation)
     w, h = (EPD_HEIGHT, EPD_WIDTH) if portrait else (EPD_WIDTH, EPD_HEIGHT)
     dark = 255 if invert else 0
     light = 0 if invert else 255
@@ -245,7 +255,7 @@ def _render_split_card(
             ff = _load_font(13, bold=False)
             draw.text((rx, h - 22), footer[:18], fill=dark, font=ff)
 
-    return _finalize_canvas(img, portrait)
+    return _finalize_canvas(img, orientation)
 
 
 def _render_list_card(
@@ -255,9 +265,10 @@ def _render_list_card(
     footer: str,
     icon: str,
     invert: bool,
-    portrait: bool,
+    orientation: str,
 ) -> bytes:
     """Render an agenda / to-do list card (header with icon/title + bulleted items)."""
+    portrait = _is_portrait(orientation)
     w, h = (EPD_HEIGHT, EPD_WIDTH) if portrait else (EPD_WIDTH, EPD_HEIGHT)
     bg = 0 if invert else 255
     fg = 255 if invert else 0
@@ -300,7 +311,7 @@ def _render_list_card(
         ff = _load_font(12, bold=False)
         draw.text((10, h - 19), footer[:34], fill=fg, font=ff)
 
-    return _finalize_canvas(img, portrait)
+    return _finalize_canvas(img, orientation)
 
 
 def render_text_card(
@@ -316,7 +327,7 @@ def render_text_card(
     details: list[dict[str, Any] | str] | None = None,
 ) -> bytes:
     """Render a 264x176 (or portrait 176x264) Displio card."""
-    portrait = orientation == "portrait"
+    portrait = _is_portrait(orientation)
     layout_clean = (layout or "classic").strip().lower()
 
     if layout_clean == "split":
@@ -328,7 +339,7 @@ def render_text_card(
             icon=icon,
             details=details,
             invert=invert,
-            portrait=portrait,
+            orientation=orientation,
         )
     if layout_clean == "list":
         return _render_list_card(
@@ -338,7 +349,7 @@ def render_text_card(
             footer=footer,
             icon=icon,
             invert=invert,
-            portrait=portrait,
+            orientation=orientation,
         )
 
     # Classic layout (with optional dark header bar & icon)
@@ -395,7 +406,7 @@ def render_text_card(
         ff = _load_font(13, bold=False)
         _draw_centered(draw, w // 2, h - 20, footer[:36], ff, bg)
 
-    return _finalize_canvas(img, portrait)
+    return _finalize_canvas(img, orientation)
 
 
 def render_grid_card(
@@ -403,7 +414,7 @@ def render_grid_card(
     orientation: str = "landscape",
 ) -> bytes:
     """Render the iconic Displio 2x2 dashboard grid (up to 4 tiles)."""
-    portrait = orientation == "portrait"
+    portrait = _is_portrait(orientation)
     w, h = (EPD_HEIGHT, EPD_WIDTH) if portrait else (EPD_WIDTH, EPD_HEIGHT)
     img = Image.new("L", (w, h), 255)
     draw = ImageDraw.Draw(img)
@@ -458,4 +469,4 @@ def render_grid_card(
     draw.line([(half_w, 0), (half_w, h)], fill=0, width=2)
     draw.line([(0, half_h), (w, half_h)], fill=0, width=2)
 
-    return _finalize_canvas(img, portrait)
+    return _finalize_canvas(img, orientation)

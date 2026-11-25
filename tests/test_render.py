@@ -78,9 +78,10 @@ def test_render_text_card_invert() -> None:
     assert ink_bits > (264 * 176) // 2
 
 
-def test_render_split_card_landscape_and_portrait() -> None:
-    """Split hero card renders cleanly in both landscape and portrait orientations."""
-    for orient in ("landscape", "portrait"):
+def test_render_split_card_all_four_orientations() -> None:
+    """Split hero card renders cleanly in all 4 physical orientations."""
+    outputs = {}
+    for orient in ("landscape_right", "landscape_left", "portrait_up", "portrait_down"):
         fb = render.render_text_card(
             title="PARIS",
             subtitle="Cloudy",
@@ -96,6 +97,9 @@ def test_render_split_card_landscape_and_portrait() -> None:
         assert len(fb) == 5808
         ink_bits = sum((b).bit_count() for b in fb)
         assert 5000 < ink_bits < 38000
+        outputs[orient] = fb
+    # All 4 physical rotations must produce distinct framebuffers
+    assert len(set(outputs.values())) == 4
 
 
 def test_render_list_card_portrait() -> None:
