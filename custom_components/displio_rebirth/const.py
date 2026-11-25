@@ -22,5 +22,6 @@ ORIENTATION_MAP: dict[int, str] = {
 }
 
 SERVICE_DISPLAY_TEXT = "display_text"
+SERVICE_DISPLAY_GRID = "display_grid"
 SERVICE_DISPLAY_IMAGE = "display_image"
 SERVICE_BEEP = "beep"

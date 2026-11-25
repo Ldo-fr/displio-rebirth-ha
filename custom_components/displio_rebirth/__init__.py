@@ -21,12 +21,14 @@ from .const import (
     DEFAULT_PORT,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
+    ORIENTATION_MAP,
     SERVICE_BEEP,
+    SERVICE_DISPLAY_GRID,
     SERVICE_DISPLAY_IMAGE,
     SERVICE_DISPLAY_TEXT,
 )
 from .coordinator import DisplioCoordinator
-from .render import render_image_bytes, render_text_card
+from .render import render_grid_card, render_image_bytes, render_text_card
 
 PLATFORMS: list[Platform] = [
     Platform.SENSOR,
@@ -38,10 +40,35 @@ SCHEMA_DISPLAY_TEXT = vol.Schema(
     {
         vol.Optional("device_id"): cv.string,
         vol.Optional("title", default=""): cv.string,
+        vol.Optional("subtitle", default=""): cv.string,
         vol.Optional("body", default=""): cv.string,
         vol.Optional("footer", default=""): cv.string,
+        vol.Optional("icon", default=""): cv.string,
+        vol.Optional("layout", default="classic"): vol.In(["classic", "split", "list"]),
+        vol.Optional("orientation", default="landscape"): vol.In(["landscape", "portrait", "auto"]),
+        vol.Optional("details"): list,
         vol.Optional("full_refresh", default=False): cv.boolean,
         vol.Optional("invert", default=False): cv.boolean,
+        vol.Optional("beep", default=False): cv.boolean,
+    }
+)
+
+SCHEMA_GRID_TILE = vol.Schema(
+    {
+        vol.Optional("title", default=""): cv.string,
+        vol.Optional("value", default=""): cv.string,
+        vol.Optional("subtitle", default=""): cv.string,
+        vol.Optional("icon", default=""): cv.string,
+        vol.Optional("invert", default=False): cv.boolean,
+    }
+)
+
+SCHEMA_DISPLAY_GRID = vol.Schema(
+    {
+        vol.Optional("device_id"): cv.string,
+        vol.Required("tiles"): vol.All(cv.ensure_list, [SCHEMA_GRID_TILE]),
+        vol.Optional("orientation", default="landscape"): vol.In(["landscape", "portrait", "auto"]),
+        vol.Optional("full_refresh", default=False): cv.boolean,
         vol.Optional("beep", default=False): cv.boolean,
     }
 )
@@ -89,6 +116,14 @@ def _resolve_coordinators(
     raise HomeAssistantError(f"Device {device_id} does not belong to {DOMAIN}")
 
 
+def _resolve_orientation(requested: str, coord: DisplioCoordinator) -> str:
+    """Resolve 'auto' orientation from the Displio's MMA8452Q accelerometer."""
+    if requested != "auto":
+        return requested
+    orient_code = (coord.data or {}).get("orientation")
+    return ORIENTATION_MAP.get(orient_code, "landscape_right")
+
+
 def _register_services(hass: HomeAssistant) -> None:
     """Register Displio Rebirth domain services once."""
     if hass.services.has_service(DOMAIN, SERVICE_DISPLAY_TEXT):
@@ -96,18 +131,59 @@ def _register_services(hass: HomeAssistant) -> None:
 
     async def handle_display_text(call: ServiceCall) -> None:
         coords = _resolve_coordinators(hass, call.data.get("device_id"))
-        fb = await hass.async_add_executor_job(
-            render_text_card,
-            call.data["title"],
-            call.data["body"],
-            call.data["footer"],
-            call.data["invert"],
-        )
         for coord in coords:
+            orient = _resolve_orientation(call.data["orientation"], coord)
+            params = {
+                "title": call.data["title"],
+                "body": call.data["body"],
+                "footer": call.data["footer"],
+                "invert": call.data["invert"],
+                "icon": call.data["icon"],
+                "subtitle": call.data["subtitle"],
+                "layout": call.data["layout"],
+                "details": call.data.get("details"),
+            }
+            fb = await hass.async_add_executor_job(
+                lambda o=orient, p=params: render_text_card(
+                    p["title"],
+                    p["body"],
+                    p["footer"],
+                    p["invert"],
+                    icon=p["icon"],
+                    subtitle=p["subtitle"],
+                    layout=p["layout"],
+                    orientation=o,
+                    details=p["details"],
+                )
+            )
             try:
                 await coord.client.post_display(fb, full_refresh=call.data["full_refresh"])
                 if call.data["beep"]:
                     await coord.client.post_beep()
+                coord.last_auto_card = (
+                    ("text", params) if call.data["orientation"] == "auto" else None
+                )
+            except DisplioError as err:
+                raise HomeAssistantError(str(err)) from err
+
+    async def handle_display_grid(call: ServiceCall) -> None:
+        coords = _resolve_coordinators(hass, call.data.get("device_id"))
+        for coord in coords:
+            orient = _resolve_orientation(call.data["orientation"], coord)
+            fb = await hass.async_add_executor_job(
+                render_grid_card,
+                call.data["tiles"],
+                orient,
+            )
+            try:
+                await coord.client.post_display(fb, full_refresh=call.data["full_refresh"])
+                if call.data["beep"]:
+                    await coord.client.post_beep()
+                coord.last_auto_card = (
+                    ("grid", {"tiles": call.data["tiles"]})
+                    if call.data["orientation"] == "auto"
+                    else None
+                )
             except DisplioError as err:
                 raise HomeAssistantError(str(err)) from err
 
@@ -143,6 +219,7 @@ def _register_services(hass: HomeAssistant) -> None:
         for coord in coords:
             try:
                 await coord.client.post_display(fb, full_refresh=call.data["full_refresh"])
+                coord.last_auto_card = None
             except DisplioError as err:
                 raise HomeAssistantError(str(err)) from err
 
@@ -155,6 +232,7 @@ def _register_services(hass: HomeAssistant) -> None:
                 raise HomeAssistantError(str(err)) from err
 
     hass.services.async_register(DOMAIN, SERVICE_DISPLAY_TEXT, handle_display_text, schema=SCHEMA_DISPLAY_TEXT)
+    hass.services.async_register(DOMAIN, SERVICE_DISPLAY_GRID, handle_display_grid, schema=SCHEMA_DISPLAY_GRID)
     hass.services.async_register(DOMAIN, SERVICE_DISPLAY_IMAGE, handle_display_image, schema=SCHEMA_DISPLAY_IMAGE)
     hass.services.async_register(DOMAIN, SERVICE_BEEP, handle_beep, schema=SCHEMA_BEEP)
 
@@ -190,7 +268,12 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id, None)
         if not hass.data[DOMAIN]:
-            for srv in (SERVICE_DISPLAY_TEXT, SERVICE_DISPLAY_IMAGE, SERVICE_BEEP):
+            for srv in (
+                SERVICE_DISPLAY_TEXT,
+                SERVICE_DISPLAY_GRID,
+                SERVICE_DISPLAY_IMAGE,
+                SERVICE_BEEP,
+            ):
                 hass.services.async_remove(DOMAIN, srv)
     return unload_ok
 
