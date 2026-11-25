@@ -1,0 +1,42 @@
+name: Cleanup PR Branch
+
+on:
+  pull_request:
+    types:
+      - closed
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    name: Delete Closed Branch
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete Head Branch
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const branch = context.payload.pull_request.head.ref;
+            const defaultBranch = context.payload.repository.default_branch || 'main';
+
+            if (!branch || branch === defaultBranch || branch === 'main' || branch === 'master') {
+              console.log(`Skipping deletion for branch: ${branch}`);
+              return;
+            }
+
+            try {
+              await github.rest.git.deleteRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `heads/${branch}`,
+              });
+              console.log(`Deleted branch '${branch}'.`);
+            } catch (error) {
+              if (error.status === 404 || error.status === 422) {
+                console.log(`Branch '${branch}' already deleted.`);
+              } else {
+                throw error;
+              }
+            }
