@@ -6,7 +6,7 @@ DOMAIN = "displio_rebirth"
 
 DEFAULT_PORT = 80
 DEFAULT_SCAN_INTERVAL = 30  # seconds
-DEFAULT_TIMEOUT = 10  # seconds
+DEFAULT_TIMEOUT = 15  # seconds (covers CC3000 10s PS-Poll wake window)
 
 CONF_SCAN_INTERVAL = "scan_interval"
 
