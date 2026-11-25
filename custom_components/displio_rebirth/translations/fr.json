@@ -1,0 +1,57 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connexion à Displio Rebirth",
+        "description": "Saisissez l'adresse IP locale et le port HTTP de votre Displio V1.0 exécutant le firmware displio-rebirth.",
+        "data": {
+          "host": "Adresse IP / Nom d'hôte",
+          "port": "Port HTTP"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Impossible de joindre le Displio. Vérifiez son adresse IP et sa connexion Wi-Fi.",
+      "invalid_device": "L'appareil a répondu mais ne semble pas exécuter le firmware displio-rebirth.",
+      "unknown": "Erreur inattendue."
+    },
+    "abort": {
+      "already_configured": "Cet appareil Displio est déjà configuré."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options Displio Rebirth",
+        "data": {
+          "scan_interval": "Intervalle d'actualisation (secondes)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "temperature": { "name": "Température" },
+      "humidity": { "name": "Humidité" },
+      "orientation": {
+        "name": "Orientation",
+        "state": {
+          "portrait_up": "Portrait haut",
+          "portrait_down": "Portrait bas",
+          "landscape_right": "Paysage droit",
+          "landscape_left": "Paysage gauche"
+        }
+      },
+      "battery_adc": { "name": "Tension batterie (ADC)" },
+      "vdda": { "name": "Alimentation analogique (VDDA)" },
+      "uptime": { "name": "Temps de fonctionnement" }
+    },
+    "binary_sensor": {
+      "usb_power": { "name": "Alimentation USB" },
+      "button": { "name": "Bouton" }
+    },
+    "button": {
+      "beep": { "name": "Bip" }
+    }
+  }
+}

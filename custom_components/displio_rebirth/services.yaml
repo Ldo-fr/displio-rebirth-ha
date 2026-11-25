@@ -1,0 +1,112 @@
+display_text:
+  name: Display text
+  description: Render a title, body, and optional footer onto the Displio 2.7" E-Ink screen.
+  fields:
+    device_id:
+      name: Device
+      description: Target Displio device (optional if only one Displio is configured).
+      selector:
+        device:
+          integration: displio_rebirth
+    title:
+      name: Title
+      description: Header text shown at the top of the screen.
+      example: "Living Room"
+      selector:
+        text:
+    body:
+      name: Body
+      description: Main text or value (supports multiple lines).
+      example: "21.4 °C"
+      selector:
+        text:
+          multiline: true
+    footer:
+      name: Footer
+      description: Small status line shown at the bottom of the screen.
+      example: "Humidity 48%"
+      selector:
+        text:
+    full_refresh:
+      name: Full refresh
+      description: Perform a full black/white flash clear before drawing (reduces ghosting).
+      default: false
+      selector:
+        boolean:
+    invert:
+      name: Invert colors
+      description: Draw white text on a black background.
+      default: false
+      selector:
+        boolean:
+    beep:
+      name: Beep
+      description: Sound a short notification beep after updating the display.
+      default: false
+      selector:
+        boolean:
+
+display_image:
+  name: Display image
+  description: Convert a local image file or HTTP(S) image URL to 264x176 1-bpp monochrome and display it.
+  fields:
+    device_id:
+      name: Device
+      description: Target Displio device (optional if only one Displio is configured).
+      selector:
+        device:
+          integration: displio_rebirth
+    path:
+      name: Image path or URL
+      description: Local path (allowed by Home Assistant allowlist_external_dirs) or HTTP(S) URL.
+      required: true
+      example: "/config/www/displio.png"
+      selector:
+        text:
+    full_refresh:
+      name: Full refresh
+      description: Perform a full black/white flash clear before drawing.
+      default: true
+      selector:
+        boolean:
+    dither:
+      name: Floyd-Steinberg dithering
+      description: Apply dithering for smoother grayscale photos/graphics.
+      default: true
+      selector:
+        boolean:
+    invert:
+      name: Invert colors
+      description: Invert black and white pixels.
+      default: false
+      selector:
+        boolean:
+
+beep:
+  name: Beep
+  description: Trigger the onboard piezo buzzer on the Displio.
+  fields:
+    device_id:
+      name: Device
+      description: Target Displio device (optional if only one Displio is configured).
+      selector:
+        device:
+          integration: displio_rebirth
+    freq:
+      name: Frequency (Hz)
+      description: Buzzer frequency in Hertz (100–10000).
+      default: 2400
+      selector:
+        number:
+          min: 100
+          max: 10000
+          unit_of_measurement: Hz
+    ms:
+      name: Duration (ms)
+      description: Beep duration in milliseconds (1–2000).
+      default: 80
+      selector:
+        number:
+          min: 1
+          max: 2000
+          unit_of_measurement: ms

@@ -1,0 +1,12 @@
+{
+  "domain": "displio_rebirth",
+  "name": "Displio Rebirth",
+  "codeowners": ["@Ldo-fr"],
+  "config_flow": true,
+  "documentation": "https://github.com/Ldo-fr/displio-rebirth-ha",
+  "integration_type": "device",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/Ldo-fr/displio-rebirth-ha/issues",
+  "requirements": ["Pillow>=10.0.0"],
+  "version": "0.1.0"
+}

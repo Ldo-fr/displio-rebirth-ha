@@ -1,0 +1,98 @@
+name: Auto Release Integration
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "custom_components/**"
+      - "hacs.json"
+  workflow_dispatch:
+    inputs:
+      force_version:
+        description: "Optional version tag override (e.g. v0.1.0). Leave empty for automatic SemVer."
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Compute SemVer & Publish HACS Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository (full history for tags)
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Determine next SemVer tag from Conventional Commits
+        id: semver
+        env:
+          FORCE_VERSION: ${{ inputs.force_version }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          python3 - <<'PY'
+          import os, re, subprocess, sys
+
+          def sh(*cmd):
+              return subprocess.check_output(cmd, text=True).strip()
+
+          force = os.environ.get("FORCE_VERSION", "").strip()
+          event = os.environ.get("EVENT_NAME", "")
+
+          tags_raw = sh("git", "tag", "--list", "v[0-9]*.[0-9]*.[0-9]*", "--sort=-v:refname")
+          latest = tags_raw.splitlines()[0] if tags_raw else ""
+
+          if force:
+              next_tag = force if force.startswith("v") else f"v{force}"
+          elif not latest:
+              next_tag = "v0.1.0"
+          else:
+              m = re.match(r"^v(\d+)\.(\d+)\.(\d+)$", latest)
+              major, minor, patch = map(int, m.groups())
+              log = sh("git", "log", f"{latest}..HEAD", "--pretty=format:%s%n%b%n---COMMIT---")
+              commits = [c.strip() for c in log.split("---COMMIT---") if c.strip()]
+
+              bump = None
+              for c in commits:
+                  first_line = c.splitlines()[0]
+                  if re.match(r"^(docs|ci|chore|style|test|build)(\([^)]*\))?:", first_line):
+                      continue
+                  if "BREAKING CHANGE" in c or re.match(r"^[a-z]+(\([^)]*\))?!:", first_line):
+                      bump = "major"
+                      break
+                  if re.match(r"^feat(\([^)]*\))?:", first_line):
+                      bump = "minor" if bump != "major" else bump
+                  elif re.match(r"^(fix|perf|refactor)(\([^)]*\))?:", first_line):
+                      if bump is None:
+                          bump = "patch"
+
+              if bump is None and event != "workflow_dispatch":
+                  print("No releasable commits since", latest, "-> skipping release.")
+                  with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+                      f.write("should_release=false\n")
+                  sys.exit(0)
+
+              if bump == "major":
+                  next_tag = f"v{major + 1}.0.0"
+              elif bump == "minor":
+                  next_tag = f"v{major}.{minor + 1}.0"
+              else:
+                  next_tag = f"v{major}.{minor}.{patch + 1}"
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write("should_release=true\n")
+              f.write(f"tag={next_tag}\n")
+          PY
+
+      - name: Create GitHub Release
+        if: steps.semver.outputs.should_release == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEXT_TAG: ${{ steps.semver.outputs.tag }}
+        run: |
+          gh release create "${NEXT_TAG}" \
+            --target "${GITHUB_SHA}" \
+            --title "Displio Rebirth HA ${NEXT_TAG}" \
+            --generate-notes
