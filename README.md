@@ -76,30 +76,86 @@ Official companion **Home Assistant** integration (HACS) for the **Displio V1.0*
 
 ## Automation Examples
 
-### Display a sensor card on the E-Ink screen
+### 1. Split Hero Weather Card (with built-in vector icons!)
 
 ```yaml
 action: displio_rebirth.display_text
 data:
-  title: "Living Room"
-  body: "{{ states('sensor.displio_temperature') }} °C"
-  footer: "Humidity {{ states('sensor.displio_humidity') }}%"
-  full_refresh: false
-  beep: false
+  layout: split
+  orientation: landscape   # landscape | portrait | auto
+  title: "PARIS"
+  icon: partly_cloudy
+  subtitle: "Cloudy"
+  body: "{{ states('sensor.displio_temperature') }}°C"
+  details:
+    - icon: droplet
+      text: "{{ states('sensor.displio_humidity') }}%"
+    - icon: wind
+      text: "12 km/h"
 ```
 
-### Send an alert with inverted colors + notification beep
+### 2. Iconic 2×2 Displio Dashboard Grid (`display_grid`)
+
+```yaml
+action: displio_rebirth.display_grid
+data:
+  orientation: auto
+  tiles:
+    - title: "INDOOR"
+      icon: thermometer
+      value: "{{ states('sensor.displio_temperature') }}°C"
+      subtitle: "{{ states('sensor.displio_humidity') }}% RH"
+    - title: "WEATHER"
+      icon: sun
+      value: "22°C"
+      subtitle: "Sunny"
+    - title: "SOLAR"
+      icon: bolt
+      value: "3.4 kW"
+      subtitle: "Export"
+    - title: "MAIL"
+      icon: mail
+      value: "3"
+      subtitle: "Unread"
+```
+
+### 3. Agenda / To-Do List Card (`layout: list`)
 
 ```yaml
 action: displio_rebirth.display_text
 data:
+  layout: list
+  orientation: portrait
+  icon: calendar
+  title: "Friday 13"
+  subtitle: "August"
+  body: |
+    Dinner at mom's house
+    Call with John
+    Pick up keys
+```
+
+### 4. Alert Card with Inverted Colors + Beep
+
+```yaml
+action: displio_rebirth.display_text
+data:
+  layout: split
+  icon: bell
   title: "ALERT"
+  subtitle: "SECURITY"
   body: "Front door left open!"
   footer: "{{ now().strftime('%H:%M') }}"
   invert: true
   full_refresh: true
   beep: true
 ```
+
+### Built-in Vector Icons
+Zero external dependencies — works offline on 1-bpp E-Ink. Pass any name below (or common `mdi:*` aliases like `mdi:weather-sunny`, `mdi:email`, `mdi:thermometer`):
+- **Weather**: `sun`, `cloud`, `partly_cloudy`, `rain`, `snow`, `storm`, `wind`, `moon`, `fog`, `thermometer`, `droplet`
+- **Home / IoT**: `home`, `light`, `bolt`, `power`, `battery`, `wifi`, `lock`, `unlock`, `door`, `window`, `bell`, `warning`, `check`, `cross`
+- **Productivity**: `mail`, `calendar`, `clock`, `list`, `trash`, `arrow_up`, `arrow_down`
 
 ### Push an image (PNG/JPEG) to the E-Ink display
 

@@ -1,6 +1,6 @@
 display_text:
-  name: Display text
-  description: Render a title, body, and optional footer onto the Displio 2.7" E-Ink screen.
+  name: Display text card
+  description: Render a classic, split hero, or list card with optional vector icons onto the Displio 2.7" E-Ink screen.
   fields:
     device_id:
       name: Device
@@ -8,19 +8,63 @@ display_text:
       selector:
         device:
           integration: displio_rebirth
+    layout:
+      name: Card layout
+      description: Visual card style inspired by original Displio widgets.
+      default: classic
+      selector:
+        select:
+          options:
+            - label: Classic (header bar + body + footer)
+              value: classic
+            - label: Split Hero (dark icon panel + value & detail rows)
+              value: split
+            - label: List / Agenda (header + bulleted lines)
+              value: list
+    orientation:
+      name: Orientation
+      description: Screen orientation ('auto' follows the onboard MMA8452Q accelerometer).
+      default: landscape
+      selector:
+        select:
+          options:
+            - label: Landscape (264x176)
+              value: landscape
+            - label: Portrait (176x264)
+              value: portrait
+            - label: Auto (from accelerometer)
+              value: auto
+    icon:
+      name: Icon
+      description: Built-in vector icon name (e.g. sun, partly_cloudy, rain, mail, calendar, home, bell, bolt, thermometer, droplet) or mdi:* alias.
+      example: "partly_cloudy"
+      selector:
+        text:
     title:
       name: Title
-      description: Header text shown at the top of the screen.
+      description: Header text shown at the top of the card or dark hero panel.
       example: "Living Room"
+      selector:
+        text:
+    subtitle:
+      name: Subtitle
+      description: Secondary label (e.g. weather condition under the hero icon or date subtitle in list layout).
+      example: "Cloudy"
       selector:
         text:
     body:
       name: Body
-      description: Main text or value (supports multiple lines).
+      description: Main value or multi-line text (in 'list' layout, each line becomes a bullet item).
       example: "21.4 °C"
       selector:
         text:
           multiline: true
+    details:
+      name: Detail rows (split layout)
+      description: Optional list of up to 3 detail rows for 'split' layout (each item can be a string or {icon, text}).
+      example: '[{"icon": "droplet", "text": "48%"}, {"icon": "wind", "text": "12 km/h"}]'
+      selector:
+        object:
     footer:
       name: Footer
       description: Small status line shown at the bottom of the screen.
@@ -35,7 +79,50 @@ display_text:
         boolean:
     invert:
       name: Invert colors
-      description: Draw white text on a black background.
+      description: Swap black and white regions.
+      default: false
+      selector:
+        boolean:
+    beep:
+      name: Beep
+      description: Sound a short notification beep after updating the display.
+      default: false
+      selector:
+        boolean:
+
+display_grid:
+  name: Display 2x2 dashboard grid
+  description: Render up to 4 independent tiles (icon, title, value, subtitle) in a crisp 2x2 Displio dashboard grid.
+  fields:
+    device_id:
+      name: Device
+      description: Target Displio device (optional if only one Displio is configured).
+      selector:
+        device:
+          integration: displio_rebirth
+    tiles:
+      name: Tiles (up to 4)
+      description: List of up to 4 tile objects ({title, value, subtitle, icon, invert}).
+      required: true
+      example: '[{"title": "TEMP", "icon": "thermometer", "value": "21.5°C"}, {"title": "HUMIDITY", "icon": "droplet", "value": "48%"}]'
+      selector:
+        object:
+    orientation:
+      name: Orientation
+      description: Screen orientation ('auto' follows the onboard accelerometer).
+      default: landscape
+      selector:
+        select:
+          options:
+            - label: Landscape (264x176)
+              value: landscape
+            - label: Portrait (176x264)
+              value: portrait
+            - label: Auto (from accelerometer)
+              value: auto
+    full_refresh:
+      name: Full refresh
+      description: Perform a full black/white flash clear before drawing.
       default: false
       selector:
         boolean:
