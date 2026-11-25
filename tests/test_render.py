@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import importlib.util
-from pathlib import Path
 import sys
 import types
+from pathlib import Path
 
 from PIL import Image
 
@@ -64,7 +64,7 @@ def test_render_text_card_produces_non_empty_ink() -> None:
         footer="Humidity 48%",
     )
     assert len(fb) == 5808
-    ink_bits = sum(bin(b).count("1") for b in fb)
+    ink_bits = sum((b).bit_count() for b in fb)
     assert 200 < ink_bits < (264 * 176) // 2
 
 
@@ -72,5 +72,5 @@ def test_render_text_card_invert() -> None:
     """Inverted card should have a predominantly black background."""
     fb = render.render_text_card(title="ALERT", body="Door open", invert=True)
     assert len(fb) == 5808
-    ink_bits = sum(bin(b).count("1") for b in fb)
+    ink_bits = sum((b).bit_count() for b in fb)
     assert ink_bits > (264 * 176) // 2

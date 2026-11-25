@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from typing import Any
 
 import aiohttp
@@ -46,7 +45,7 @@ class DisplioClient:
                 if resp.status != 200:
                     raise DisplioResponseError(f"GET /status returned HTTP {resp.status}")
                 data = await resp.json(content_type=None)
-        except (aiohttp.ClientError, asyncio.TimeoutError) as err:
+        except (TimeoutError, aiohttp.ClientError) as err:
             raise DisplioConnectionError(f"Error connecting to {url}: {err}") from err
         except ValueError as err:
             raise DisplioResponseError(f"Invalid JSON from {url}: {err}") from err
@@ -72,7 +71,7 @@ class DisplioClient:
             ) as resp:
                 if resp.status != 200:
                     raise DisplioResponseError(f"POST /display returned HTTP {resp.status}")
-        except (aiohttp.ClientError, asyncio.TimeoutError) as err:
+        except (TimeoutError, aiohttp.ClientError) as err:
             raise DisplioConnectionError(f"Error posting display to {url}: {err}") from err
 
     async def post_beep(self, freq: int = 2400, ms: int = 80) -> None:
@@ -84,5 +83,5 @@ class DisplioClient:
             async with self._session.post(url, timeout=self._timeout) as resp:
                 if resp.status != 200:
                     raise DisplioResponseError(f"POST /beep returned HTTP {resp.status}")
-        except (aiohttp.ClientError, asyncio.TimeoutError) as err:
+        except (TimeoutError, aiohttp.ClientError) as err:
             raise DisplioConnectionError(f"Error triggering beep at {url}: {err}") from err

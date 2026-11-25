@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import io
-from pathlib import Path
 import textwrap
+from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
@@ -101,7 +101,7 @@ def render_text_card(
             font_body = _load_font(38, bold=True)
             wrapped = lines_in
             line_h = 44
-        elif len(lines_in) <= 2 and max((len(l) for l in lines_in), default=0) <= 18:
+        elif len(lines_in) <= 2 and max((len(ln) for ln in lines_in), default=0) <= 18:
             font_body = _load_font(24, bold=True)
             wrapped = lines_in
             line_h = 30
